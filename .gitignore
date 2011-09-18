@@ -38,4 +38,4 @@ Thumbs.db
 ########################
 core.inc.php
 database.php
-app/tmp/cache/*
+*tmp/*
