@@ -13,6 +13,7 @@
         function beforeFilter(){
             parent::beforeFilter();
                 
+            $this->_setupStaging();
             $this->_setupSecurity();
             $this->_setSubDomain();
             $this->_setOrganization();
@@ -56,6 +57,17 @@
             $this->Security->blackHoleCallback = '_badRequest';
             if(Configure::read('forceSSL')) {
                 $this->Security->requireSecure('*');
+            }
+        }
+        function _setupStaging() {
+            $mode = Configure::read('Staging.mode');
+            if($mode === 'development'){
+                $developer_ips = Configure::read('Staging.development.ips');
+                if(is_array($developer_ips) && !in_array('0.0.0.0',$developer_ips)){
+                    if(!in_array($this->RequestHandler->getClientIp(), $developer_ips)){
+                        header('Location: http://www.google.com');
+                    }
+                }
             }
         }
         function _badRequest() {
