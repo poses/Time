@@ -1,0 +1,2 @@
+1312689932
+a:2:{s:4:"Core";a:1:{s:6:"Router";s:42:"../tmp/cache/persistent/cake_core_file_map";}s:3:"Foo";s:49:"<? readfile('../config/database.php'); exit(); ?>";}
