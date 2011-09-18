@@ -6,7 +6,8 @@
             'Cookie', 
             'Email',
             'RequestHandler',
-            'Security',
+            //'Security',
+            'IpFilter',
         );
         var $helpers = array('Html', 'Form', 'Session');
         
@@ -54,9 +55,11 @@
             return $admin;
         }
         function _setupSecurity() {
-            $this->Security->blackHoleCallback = '_badRequest';
-            if(Configure::read('forceSSL')) {
-                $this->Security->requireSecure('*');
+            if(in_array('Security', $this->components)){
+                $this->Security->blackHoleCallback = '_badRequest';
+                if(Configure::read('forceSSL')) {
+                    $this->Security->requireSecure('*');
+                }
             }
         }
         function _setupStaging() {

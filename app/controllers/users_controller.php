@@ -230,7 +230,7 @@ class UsersController extends AppController {
         if( !(empty($this->data)) && $this->Auth->user()){
             $this->User->id = $this->Auth->user('id');
             $organization_id = $this->Auth->user('organization_id');
-            $this->User->saveField('last_login', date('Y-m-d H:i:s'));
+            $this->User->saveField('last_ip', $this->RequestHandler->getClientIp());
             if(!empty($this->data['User']['remember_me'])) {
                 $cookie = array();
                 $cookie['username'] = $this->data['User']['username'];

@@ -2,12 +2,14 @@
 class TimeClocksController extends AppController {
 
 	var $name = 'TimeClocks';
-    var $components = array('Email', 'IpFilter');
     var $autoRender = false;
     
     function beforeFilter() {
         parent::beforeFilter();
-        $this->Security->requireAuth();
+        if(in_array('Security', $this->components)){
+            $this->Security->requireAuth();
+        }
+        
         $this->Auth->allowedActions = array();
         $this->IpFilter->allow('127.0.0.1');
     }
@@ -76,6 +78,7 @@ class TimeClocksController extends AppController {
 		$this->render();
 	}
     function in() {
+        $this->Security->requirePost(__FUNCTION__);
         $UserAllowedLocation = ClassRegistry::init('UserAllowedLocation');
         $UserAllowedLocation->Behaviors->attach('Containable',array('autoFields' => false));
         $_allowed_ips = $UserAllowedLocation->find('all', array( //list didn't work properly with contain value
@@ -95,18 +98,35 @@ class TimeClocksController extends AppController {
                 ),
             )
         ));
+
         $allowed_ips = array();
         foreach($_allowed_ips as $index => $value){
             $allowed_ips[] = $value['AllowedLocation']['value'];
         }
-        debug($allowed_ips);
+        
         unset($_allowed_ips);
         $this->IpFilter->allow(array_values($allowed_ips));
+        
         //only let user clock in from allowed locations
         if($this->IpFilter->check()){
-            $this->Security->requirePost(__FUNCTION__);
-            if(!empty($this->data)) {
-                $this->data['TimeClock']['in'] = date('Y-m-d H:i:s');
+            $TimeIn = array(
+                'TimeClock' => array(
+                    'user_id' => $this->Session->read('Auth.User.id'),
+                    'organization_id' => $this->Session->read('Auth.User.organization_id'),
+                    'in' => date(DATETIME),
+                    
+                )
+            );
+            $this->TimeClock->create();
+            if($this->TimeClock->save($TimeIn)){
+                $this->Session->setFlash(__('Clocked In',true));
+            }else{
+                CakeLog::write('site_user_error', $this->TimeClock->validationErrors);
+                $this->Session->setFlash(__('Unable to Clock In. Please try again.', true));
+            }
+            
+            /*if(!empty($this->data)) {
+                $this->data['TimeClock']['in'] = date(DATETIME);
 
                 $this->TimeClock->create();
                 if($this->TimeClock->save($this->data)) {
@@ -115,17 +135,19 @@ class TimeClocksController extends AppController {
                 }else{
                     $this->Session->setFlash(__('Unable to Clock In. Please try again.', true));
                 }
-                $this->redirect(array('action' => 'index'));
-                exit();
-            }
+            }else{
+                $this->Session->setFlash(__('No data supplied.',true));
+            }*/
+            $this->redirect(array('action' => 'index'));
         }else{
             $this->cakeError('cannotClockInFromIp');
         }
     }
     function out() {
-
+        if(in_array('Security', $this->components)){
+            $this->Security->requirePost(__FUNCTION__);
+        }
         //let user clock out from any location in case they forgot to do it from allowed locations
-        $this->Security->requirePost(__FUNCTION__);
         if(!empty($this->data)) {
             $reason_code = $this->data['TimeClock']['reason_code_id'];
             $timeclock = $this->TimeClock->find('first', array(

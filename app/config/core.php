@@ -1,6 +1,7 @@
 <?php
 
 include_once("core.inc.php");
+define("DATETIME", "Y-m-d H:i:s");
 /**
  * This is core configuration file.
  *

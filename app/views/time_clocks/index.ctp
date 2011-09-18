@@ -20,7 +20,8 @@
                 echo $this->Form->input('organization_id', array('type' => 'hidden', 'value' => $organization['id']));
                 
                 if(!empty($reasons)){
-                    echo $this->Form->select('reason_code_id', $reasons, null, array());
+                    $reason_keys = array_keys($reasons);
+                    echo $this->Form->select('reason_code_id', $reasons);
                 }
                 echo $this->Form->end('Clock Out', array('type' => 'button'));
             ?>
