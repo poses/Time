@@ -230,8 +230,7 @@ class Helper extends Overloadable {
 				}
 			}
 		}
-		
-		debug($webPath);
+
 		if (strpos($webPath, '//') !== false) {
 			return str_replace('//', '/', $webPath . $asset[1]);
 		}

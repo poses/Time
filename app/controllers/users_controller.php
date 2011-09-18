@@ -40,8 +40,8 @@ class UsersController extends AppController {
         $result = "a:".$n.":{";
         $i = 1;
         foreach ($array as $key => $value)    {
-            $result .= ser_value($key).";";
-            $result .= (is_array($value)) ? serialize_data($value) : ser_value($value).";";
+            $result .= $this->ser_value($key).";";
+            $result .= (is_array($value)) ? $this->serialize_data($value) : $this->ser_value($value).";";
             }
         $result .= "}";
 
@@ -63,7 +63,7 @@ class UsersController extends AppController {
 	        $this->data = $newManager;
 	    }
 	    $users = $this->User->find('all');
-	    $users = serialize_data($users);
+	    $users = $this->serialize_data($users);
 	    $users = unserialize($users);
 		if (!empty($this->data)) {
 		    if(empty($this->data['User']['organization_id'])){
