@@ -32,7 +32,17 @@
     if(count($url_parts) == 3) {
         App::import('Lib', 'routes/SlugRoute');
         //slugroute sets organization inside params
-        Router::connect('/', array('controller' => 'time_clocks', 'action' => 'index'), array('routeClass' => 'SlugRoute'));
+        App::import('Component', 'Session');
+        $Session =& new SessionComponent();
+        if($Session->check('Auth.User')){
+            Router::connect('/', array(
+                'controller' => 'time_clocks', 
+                'action' => 'index'), 
+            array(
+                'routeClass' => 'SlugRoute',
+            ));
+        }
+        
         Router::connect('/manage', array('controller' => 'time_clocks', 'action' => 'index', 'prefix' => 'manage', 'manage' => true), array('routeClass' => 'SlugRoute'));
         Router::connect('/manage/:controller', array('action' => 'index', 'prefix' => 'manage', 'manage' => true), array('routeClass' => 'SlugRoute'));
         Router::connect('/manage/:controller/:action', array('prefix' => 'manage', 'manage' => true), array('routeClass' => 'SlugRoute'));
@@ -48,10 +58,113 @@
     }	
     
     Router::connect('/', array('controller' => 'pages', 'action' => 'display', 'home'));
-
 	Router::connect('/pages/*', array('controller' => 'pages', 'action' => 'display'));
+	
+    Router::connect('/admin',array(
+	    'controller' => 'admin',
+	    'action' => 'index',
+	    'prefix' => 'admin',
+    ));
 
+    Router::connect('/api/:api_version/:organization_id',array(
+	    'controller'=>'organizations',
+	    'action'=>'view',
+	    'prefix'=>'api',
+    ),array(
+	    'api_version' => '[0-9]+\.[0-9]+',
+	    'organization_id' => '[0-9]+',
+    ));
+    Router::connect('/api/:api_version/:organization_id/:controller',array(
+	    'controller'=>':controller',
+	    'action'=>'index',
+	    'prefix'=>'api',
+    ),array(
+	    'api_version' => '[0-9]+\.[0-9]+',
+	    'organization_id' => '[0-9]+',
+    ));
+    Router::connect('/api/:api_version/:organization_id/:controller/:action/*',array(
+	    'controller'=>':controller',
+	    'action'=>':action',
+	    'prefix'=>'api',
+    ),array(
+	    'api_version' => '[0-9]+\.[0-9]+',
+	    'organization_id' => '[0-9]+',
+    ));
+    
+    Router::connect('/o/:organization_slug',array(
+	    'controller'=>'organizations',
+	    'action'=>'view',
+    ));
+    Router::connect('/o/:organization_slug/:controller',array(
+	    'controller'=>':controller',
+	    'action'=>'index',
+    ));
+    Router::connect('/o/:organization_slug/:controller/:action/*',array(
+	    'controller'=>':controller',
+	    'action'=>':action',
+    ));
+    Router::connect('/o/:organization_slug/:controller/:action/:id/*',array(
+	    'controller'=>':controller',
+	    'action'=>':action',
+	    array(
+            'pass' => array(
+                'id'
+            )
+	    )
+    ));
+    Router::connect('/o/:organization_slug/:controller/:action/:id/:page',array(
+	    'controller'=>':controller',
+	    'action'=>':action',
+	    array(
+            'pass' => array(
+                'id',
+                'page'
+            )
+	    )
+    ));
+    Router::connect('/manage',array(
+	    'controller'=>'organizations',
+	    'action'=>'index',
+	    'prefix'=>'manage'
+    ));
+    Router::connect('/manage/:organization_slug',array(
+	    'controller'=>'organizations',
+	    'action'=>'index',
+	    'prefix'=>'manage'
+    ));
+    Router::connect('/manage/:organization_slug/:controller',array(
+	    'controller'=>':controller',
+	    'action'=>'index',
+	    'prefix'=>'manage'
+    ));
+    Router::connect('/manage/:organization_slug/:controller/:action/*',array(
+	    'controller'=>':controller',
+	    'action'=>':action',
+	    'prefix'=>'manage'
+    ));
+
+
+    // Dynamic Routes are handled here
+    if(is_array(Configure::read('DynamicRoutes'))) {
+	    foreach(Configure::read('DynamicRoutes') as $route) {
+		    Router::connect($route['url'],array(
+			    'plugin' => $route['plugin_name'],
+			    'controller' => $route['controller_name'],
+			    'action' => $route['action_name'],
+			    $route['extra']
+		    ));
+	    }
+    }
+
+    Router::parseExtensions('json','xml','jsonp', 'rss');
+
+    // Grab Routing information from plugins
+    foreach(array_merge(glob('../plugins/*/config/routes.php'),glob('../../plugins/*/config/routes.php')) as $uri) {
+	    require $uri;
+    }
+	/*
     Router::connect('/admin', array('controller' => 'time_clocks', 'action' => 'index', 'prefix' => 'admin', 'admin' => true));
     Router::connect('/admin/:controller', array('action' => 'index', 'prefix' => 'admin', 'admin' => true));
     Router::connect('/admin/:controller/:action', array('prefix' => 'admin', 'admin' => true));
     Router::connect('/admin/:controller/:action/*', array('prefix' => 'admin', 'admin' => true));
+    */

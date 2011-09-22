@@ -1,70 +1,129 @@
-<?php
-/**
- *
- * PHP versions 4 and 5
- *
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright 2005-2011, Cake Software Foundation, Inc. (http://cakefoundation.org)
- *
- * Licensed under The MIT License
- * Redistributions of files must retain the above copyright notice.
- *
- * @copyright     Copyright 2005-2011, Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
- * @package       cake
- * @subpackage    cake.cake.libs.view.templates.layouts
- * @since         CakePHP(tm) v 0.10.0.1076
- * @license       MIT License (http://www.opensource.org/licenses/mit-license.php)
- */
-?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+
+<?php echo $this->Html->docType('html5'); ?>
+<html lang="en">
 <head>
 	<?php echo $this->Html->charset(); ?>
 	<title>
-		<?php __('CakePHP: the rapid development php framework:'); ?>
 		<?php echo $title_for_layout; ?>
 	</title>
+	<!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
 	<?php
-		echo $this->Html->meta('icon');
-
-		echo $this->Html->css('cake.generic');
-
-		echo $scripts_for_layout;
+	    echo $this->Html->meta('keywords');
+	    echo $this->Html->meta('description');
+        
+        echo $this->element('default_styles');
+        echo $this->Html->css('app.less?'.time(), 'stylesheet/less');
+		echo $this->element('default_scripts');
+		
 	?>
-	<style>
-        #user_name {
-            width: 100%;
-            text-align: right;
+	<link rel="shortcut icon" href="images/favicon.ico">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="images/apple-touch-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="images/apple-touch-icon-114x114.png">
+    <style>
+        .aaa{
+            background-color:#aaa;
         }
-	</style>
+        .bbb{
+            background-color:#bbb;
+        }
+        .ccc{
+            background-color:#ccc;
+        }
+        .ddd{
+            background-color:#ddd;
+        }
+        .eee{
+            background-color:#eee;
+        }
+        .fff{
+            background-color:#fff;
+        }
+        .bold{
+            font-weight:bold;
+        }
+        .bolder{
+            font-weight:bolder;
+        }
+        .italic{
+            font-decoration:italic;
+        }
+        .font20{
+            font-size:20px;
+        }
+        .pt5{
+            padding-top:5px;
+        }
+        .pt10{
+            padding-top:10px;
+        }
+        .pb5{
+            padding-bottom:5px;
+        }
+        .pb10{
+            padding-bottom:10px;
+        }
+        .mt5{
+            margin-top:5px;
+        }
+        .mt10{
+            margin-top:10px;
+        }
+        .mb5{
+            margin-bottom:5px;
+        }
+        .mb10{
+            margin-bottom:10px;
+        }
+    </style>
 </head>
 <body>
-	<div id="container">
-		<div id="header">
-			<h1><?php echo $this->Html->link(__('TimeSpot', true), 'http://time.local'); ?></h1>
-			
-		</div>
-		<div id="content">
+    <div>
+        <header class="jumbotron subhead" id="overview">
+          <div class="inner">
+            <div class="container">
+            <?php if(isset($organization)):?>
+              <h1><?php echo ucwords($organization['name']) . ' '.__('Organization', true);?></h1>
+              <p class="lead">
+                <?php echo $organization['description'];?>
+              </p>
+              <?php endif;?>
+            </div>
+          </div>
+        </header>
+    </div>
+    <?php echo $this->element('topbar');?>
+    <?php if($this->Session->check('Auth.User')):?>
+        <div class="container">
+    <?php else:?>
+	    <div class="container">
+	<?php endif;?>
+	        
+                <div class="flash">
+		            <?php 
+		                
+		                
+		                echo $this->Session->flash(); 
+		                echo $this->Session->flash('auth'); 
+                        echo $this->Session->flash('email');
+		            ?>
+		        </div>
             
-			<?php 
-			    echo $this->element('user_bar', array('user' => $user));
-			    
-			    echo $this->Session->flash(); 
-                echo $this->Session->flash('email');
-			?>
-
-			<?php echo $content_for_layout; ?>
-
-		</div>
-		<div id="footer">
-			<?php echo $this->Html->link(
-					$this->Html->image('cake.power.gif', array('alt'=> __('CakePHP: the rapid development php framework', true), 'border' => '0')),
-					'http://www.cakephp.org/',
-					array('target' => '_blank', 'escape' => false)
-				);
-			?>
-		</div>
+		    <!--<div class="page-header">
+                <h1><?php echo Inflector::humanize($this->params['controller']);?></h1>
+            </div>-->
+            <?php echo $this->element('user_tab');?>
+		    <section>
+		    <?php echo $content_for_layout; ?>
+		    </section>
+            <div class="footer">
+			    Copyright &copy; <?php echo date('Y') . ' ' . __('Clock', true).'&sup2;';?>
+		    </div>
+        </div>
+		
 	</div>
 </body>
 </html>

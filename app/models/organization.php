@@ -2,6 +2,7 @@
 class Organization extends AppModel {
 
 	var $name = 'Organization';
+	var $displayField = 'name';
 	var $validate = array(
 		'name' => array('notempty'),
 		'slug' => array('notempty'),
@@ -9,6 +10,9 @@ class Organization extends AppModel {
 		'active' => array('numeric')
 	);
 
+    var $belongsTo = array(
+        'UserGroup',
+    );
 	//The Associations below have been created with all possible keys, those that are not needed can be removed
 	var $hasMany = array(
 		'AllowedLocation' => array(

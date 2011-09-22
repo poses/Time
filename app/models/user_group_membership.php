@@ -1,13 +1,8 @@
 <?php
 class UserGroupMembership extends AppModel {
-
 	var $name = 'UserGroupMembership';
-	var $validate = array(
-		'user_id' => array('notempty'),
-		'user_group_id' => array('notempty')
-	);
-
 	//The Associations below have been created with all possible keys, those that are not needed can be removed
+
 	var $belongsTo = array(
 		'User' => array(
 			'className' => 'User',
@@ -24,6 +19,5 @@ class UserGroupMembership extends AppModel {
 			'order' => ''
 		)
 	);
-
 }
 ?>

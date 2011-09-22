@@ -1,7 +1,8 @@
 <?php
 
 include_once("core.inc.php");
-define("DATETIME", "Y-m-d H:i:s");
+define("DATETIME_SQL", "Y-m-d H:i:s");
+define("DATE_SQL", "Y-m-d");
 /**
  * This is core configuration file.
  *
@@ -88,7 +89,11 @@ define("DATETIME", "Y-m-d H:i:s");
  *
  * [Note Routing.admin is deprecated in 1.3.  Use Routing.prefixes instead]
  */
-	Configure::write('Routing.prefixes', array('admin' => 'admin', 'manage' => 'manage')); // make associated so we can use read('Routing.prefixes.prefix')
+	Configure::write('Routing.prefixes', array(
+	    'admin' => 'admin', 
+	    'manage' => 'manage',
+	    'api'=>'api'
+    )); // make associated so we can use read('Routing.prefixes.prefix')
 
 /**
  * Turn off all caching application-wide.
@@ -167,13 +172,13 @@ define("DATETIME", "Y-m-d H:i:s");
  * characters."
  * @link http://php.net/session_name
  */
-	Configure::write('Session.cookie', '420TIME');
+	Configure::write('Session.cookie', 'clocks2');
 
 /**
  * Session time out time (in seconds).
  * Actual value depends on 'Security.level' setting.
  */
-	Configure::write('Session.timeout', '0');
+	Configure::write('Session.timeout', '9999999999');
 
 /**
  * If set to false, sessions are not automatically started.
@@ -199,7 +204,7 @@ define("DATETIME", "Y-m-d H:i:s");
  * CakePHP session IDs are also regenerated between requests if
  * 'Security.level' is set to 'high'.
  */
-	Configure::write('Security.level', 'medium');
+	Configure::write('Security.level', 'low');
 
 /* 
  *    Configuration salt and cipherSeed moved to core.inc.php 
@@ -298,4 +303,11 @@ define("DATETIME", "Y-m-d H:i:s");
  *	));
  *
  */
-	Cache::config('default', array('engine' => 'File'));
+Cache::config('default', array('engine' => 'File'));
+Configure::write('cache_results', false);
+Configure::write('Project Name', 'Clock Squared');
+ 
+// Load Plugin config files
+foreach(array_merge(glob('../plugins/*/config/core.php'),glob('../../plugins/*/config/core.php')) as $uri) {
+	require $uri;
+}

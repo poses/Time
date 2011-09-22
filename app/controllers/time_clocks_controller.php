@@ -10,7 +10,12 @@ class TimeClocksController extends AppController {
             $this->Security->requireAuth();
         }
         
-        $this->Auth->allowedActions = array();
+        if($this->Session->check('Auth.User')){
+            $this->Auth->allow = array('*');
+        }else{
+            $this->Auth->allow = array();
+        }
+        
         $this->IpFilter->allow('127.0.0.1');
     }
     
@@ -70,7 +75,7 @@ class TimeClocksController extends AppController {
 	}
 	function view($id = null) {
 		if (!$id) {
-			$this->Session->setFlash(__('Invalid TimeClock.', true));
+			$this->Session->setFlash(__('Invalid TimeClock.', true), 'flash_failure');
 			$this->redirect(array('action'=>'index'));
 			exit();
 		}
@@ -78,7 +83,21 @@ class TimeClocksController extends AppController {
 		$this->render();
 	}
     function in() {
-        $this->Security->requirePost(__FUNCTION__);
+        if(in_array('Security', $this->components)){
+            $this->Security->requirePost(__FUNCTION__);
+        }
+        $ClockedIn = $this->TimeClock->find('first', array(
+            'conditions' => array(
+                //Leave organiation_id unchecked so that a user can be logged in
+                // to multiple organizations at once
+                'TimeClock.user_id' => $this->Session->read('Auth.User.id'),
+                'TimeClock.out' => '0000-00-00 00:00:00',
+            )
+        ));
+        if(!empty($ClockedIn)){
+            $this->Session->setFlash(__('You are already clocked in.', true), 'flash_info');
+            $this->redirect('/time_clocks/index');
+        }
         $UserAllowedLocation = ClassRegistry::init('UserAllowedLocation');
         $UserAllowedLocation->Behaviors->attach('Containable',array('autoFields' => false));
         $_allowed_ips = $UserAllowedLocation->find('all', array( //list didn't work properly with contain value
@@ -113,16 +132,16 @@ class TimeClocksController extends AppController {
                 'TimeClock' => array(
                     'user_id' => $this->Session->read('Auth.User.id'),
                     'organization_id' => $this->Session->read('Auth.User.organization_id'),
-                    'in' => date(DATETIME),
+                    'in' => date(DATETIME_SQL),
                     
                 )
             );
             $this->TimeClock->create();
             if($this->TimeClock->save($TimeIn)){
-                $this->Session->setFlash(__('Clocked In',true));
+                $this->Session->setFlash(__('Clocked In',true), 'flash_success');
             }else{
                 CakeLog::write('site_user_error', $this->TimeClock->validationErrors);
-                $this->Session->setFlash(__('Unable to Clock In. Please try again.', true));
+                $this->Session->setFlash(__('Unable to Clock In. Please try again.', true), 'flash_failure');
             }
             
             /*if(!empty($this->data)) {
@@ -147,8 +166,10 @@ class TimeClocksController extends AppController {
         if(in_array('Security', $this->components)){
             $this->Security->requirePost(__FUNCTION__);
         }
+        
         //let user clock out from any location in case they forgot to do it from allowed locations
         if(!empty($this->data)) {
+
             $reason_code = $this->data['TimeClock']['reason_code_id'];
             $timeclock = $this->TimeClock->find('first', array(
                 'conditions' => array(
@@ -171,27 +192,30 @@ class TimeClocksController extends AppController {
 
             if(!empty($reason)) {
                 if($this->TimeClock->save($this->data)) {
-                    $this->Session->setFlash(__('Clocked Out for ' . $reason['ReasonCode']['name'] ,true));            
+                    $this->Session->setFlash(__('Clocked Out for ' . $reason['ReasonCode']['name'] ,true), 'flash_success');            
                 }else{
-                    $this->Session->setFlash(__('Unable to Clock Out. Please try again.', true));
+                    $this->Session->setFlash(__('Unable to Clock Out. Please try again.', true), 'flash_failure');
                 }
             }else{
-                $this->Session->setFlash(__('No good reason for you to clock out, get back to work!', true));
+                $this->Session->setFlash(__('No good reason for you to clock out, get back to work!', true), 'flash_warning');
             }
-            $this->redirect(array('action' => 'index'));
-            exit();
+            
+        }else{
+            $this->Session->setFlash(__('No data sent. Please try again!', true), 'flash_failure');
         }
+        $this->redirect(array('action' => 'index'));
+        exit();
     }
 	function manage_add() {
 	    $this->Security->requirePost(__FUNCTION__);
 		if (!empty($this->data)) {
 			$this->TimeClock->create();
 			if ($this->TimeClock->save($this->data)) {
-				$this->Session->setFlash(__('The TimeClock has been saved', true));
+				$this->Session->setFlash(__('The TimeClock has been saved', true), 'flash_success');
 				$this->redirect(array('action'=>'index'));
 				exit();
 			} else {
-				$this->Session->setFlash(__('The TimeClock could not be saved. Please, try again.', true));
+				$this->Session->setFlash(__('The TimeClock could not be saved. Please, try again.', true), 'flash_failure');
 			}
 		}
 		$users = $this->TimeClock->User->find('list');
@@ -200,15 +224,15 @@ class TimeClocksController extends AppController {
 
 	function manage_edit($id = null) {
 		if (!$id && empty($this->data)) {
-			$this->Session->setFlash(__('Invalid TimeClock', true));
+			$this->Session->setFlash(__('Invalid TimeClock', true), 'flash_failure');
 			$this->redirect(array('action'=>'index'));
 		}
 		if (!empty($this->data)) {
 			if ($this->TimeClock->save($this->data)) {
-				$this->Session->setFlash(__('The TimeClock has been saved', true));
+				$this->Session->setFlash(__('The TimeClock has been saved', true), 'flash_success');
 				$this->redirect(array('action'=>'index'));
 			} else {
-				$this->Session->setFlash(__('The TimeClock could not be saved. Please, try again.', true));
+				$this->Session->setFlash(__('The TimeClock could not be saved. Please, try again.', true), 'flash_failure');
 			}
 		}
 		if (empty($this->data)) {
@@ -221,11 +245,11 @@ class TimeClocksController extends AppController {
 
 	function manage_delete($id = null) {
 		if (!$id) {
-			$this->Session->setFlash(__('Invalid id for TimeClock', true));
+			$this->Session->setFlash(__('Invalid id for TimeClock', true), 'flash_warning');
 			$this->redirect(array('action'=>'index'));
 		}
 		if ($this->TimeClock->del($id)) {
-			$this->Session->setFlash(__('TimeClock deleted', true));
+			$this->Session->setFlash(__('TimeClock deleted', true), 'flash_success');
 			$this->redirect(array('action'=>'index'));
 		}
 	}

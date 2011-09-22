@@ -4,13 +4,23 @@ class UsersController extends AppController {
 	var $name = 'Users';
 
     function beforeFilter() {
-        parent::beforeFilter();
-        $this->Auth->allowedActions = array();
-        $this->Auth->allow('login', 'logout', 'add', 'activate');
+        
+        //$this->Auth->allowedActions = array();
+        $this->Auth->allow(array(
+            'login', 
+            'logout', 
+            'add',
+            'thanks',
+            'activate',
+            'send_activation',
+            'reset_password',
+            'api_search',
+        ));
         $this->Auth->object = 'User';
         if($this->Session->read('NewOrganization.manager')){
             $this->Auth->allow('manage_add');
         }
+        parent::beforeFilter();
     }
     function beforeRender() {
         parent::beforeRender();
@@ -19,6 +29,7 @@ class UsersController extends AppController {
         debug($this);die;
         return false;
     }
+    
 	function manage_index(){
 	    debug($this->params);
         $User = $this->User->find('all', array(
@@ -49,43 +60,75 @@ class UsersController extends AppController {
     }
 	function view($id = null) {
 		if (!$id) {
-			$this->Session->setFlash(__('Invalid User.', true));
+			$this->Session->setFlash(__('Invalid User.', true), 'flash_failure');
 			$this->redirect(array('action'=>'index'));
 		}
 		$this->set('user', $this->User->read(null, $id));
 	}
     
 	function add() {
+	    if($this->Session->check('Auth.User')){
+	        $this->Session->setFlash(__('You already have a account.', true), 'flash_info');
+	        $this->redirect('/');
+	    }
 	    $newManager = $this->Session->read('NewOrganization.manager');
 	    $this->Session->delete('NewOrganization.manager');
 	    //data from organization add
-	    if(!empty($newManager)){
+	    if(!empty($newManager) && isset($newManager['User']['organization_id'])){
 	        $this->data = $newManager;
 	    }
-	    $users = $this->User->find('all');
+	    /*$users = $this->User->find('all');
 	    $users = $this->serialize_data($users);
-	    $users = unserialize($users);
+	    $users = unserialize($users);*/
+	    
 		if (!empty($this->data)) {
+		    if(!empty($this->data['User']['favorite_food'])){
+		        $this->Session->setFlash('Thank you for registering!');
+		        return;
+		    }else{
+		        unset($this->data['User']['favorite_food']);
+		    }
+		    
 		    if(empty($this->data['User']['organization_id'])){
                 $this->Session->write('NewOrganization.manager', $this->data);
                 $this->redirect(array('controller'=>'organizations', 'action' => 'add'));
 		    }
-		    $userGroups = array_flip($this->User->UserGroup->find('list', array(
-	            'recursive' => -1,
-	        )));
-		    if(!empty($newManager)){
-		        $this->data['User']['user_group_id'] = $userGroups['Managers'];
-	        }else{
-	            $this->data['User']['user_group_id'] = $userGroups['Users'];
-	        }
+		    
 	        //debug($this->data);die;
 			$this->User->create();
 			if ($this->User->save($this->data)) {
 			    $this->data['User']['id'] = $this->User->getLastInsertID();
-                
-			    $this->_sendActivationEmail($this->data);
+			    
+			    
 			    if(!empty($newManager)){
-			        
+			        $newOrganizationUserGroup = array(
+			            'UserGroup' => array(
+			                'parent_user_group_id' => null,
+			                'organization_id' => $newManager['Organization']['id'],
+			                'name' => $newManager['Organization']['name'].' Admin',
+			                'description' => $newManager['Organization']['name'].' Administrators Group',
+			                'is_private' => true,
+			                'is_active' => true,
+			            )
+			        );
+			        $this->User->UserGroup->create();
+			        if($this->User->UserGroup->save($newOrganizationUserGroup)){
+			            $newOrganizationUserGroupMembership = array(
+			                'UserGroupMembership' => array(
+			                    'user_id' => $this->data['User']['id'],
+			                    'user_group_id' =>$this->User->UserGroup->getLastInsertID(),
+			                    'rank' => 100,
+			                )
+			            );
+			            if($this->User->UserGroupMembership->save($newOrganizationUserGroupMembership)){
+			                /*if($this->_sendActivationEmail($this->data)){
+			                    $this->Session->setFlash(__('We have sent you a activation email. If you don\'t see it in your inbox, Please check your spam.',true), 'flash_info');
+			                }*/
+			            }
+			        }else{
+			            debug($this->User->UserGroup->validationErrors);
+			            die;
+			        }
 			        //TODO: check why not all reasons get inserted
 			        $reasons = array(
 			            array(
@@ -104,9 +147,10 @@ class UsersController extends AppController {
 			            )
 			        );
 			        foreach($reasons as $index => $value) {
+			            $this->User->TimeClock->ReasonCode->create();
 			            $reason = $this->User->TimeClock->ReasonCode->save($value);
 			            if(!$reason){
-			                $this->Session->setFlash(__('There way a error in adding default reason codes, Please contact the administrator.',true));
+			                $this->Session->setFlash(__('There way a error in adding default reason codes, Please contact the administrator.',true), 'flash_failure');
 			                $this->redirect(array('action' => 'index'));
 			            }
 			        }
@@ -121,11 +165,12 @@ class UsersController extends AppController {
 			            )
 			        );
 			        if(!$this->User->UserAllowedLocation->AllowedLocation->save($allowedLocations)){
-			            $this->Session->setFlash(__('There way a error in adding default reason codes, Please contact the administrator.',true));
+			            $this->Session->setFlash(__('There way a error in adding default reason codes, Please contact the administrator.',true), 'flash_failure');
 			            $this->redirect(array('action' => 'index'));
 			        }
-                    $this->Session->setFlash(__('The Organization has been saved and you manage it.', true));
+                    $this->Session->setFlash(__('The Organization has been saved and you manage it.', true), 'flash_success');
     				$this->redirect(array('action'=>'index'));
+    				
 			    }else{
 			        $AllowedLocations = $this->User->UserAllowedLocation->AllowedLocation->find('all', array(
 			            'conditions' => array(
@@ -148,7 +193,7 @@ class UsersController extends AppController {
 			            }
 			        }
 			        if(!empty($err)){
-			            $this->Session->setFlash(__('There was an error adding you to the default locations, Please contact your manager once you activate your account.',true));
+			            $this->Session->setFlash(__('There was an error adding you to the default locations, Please contact your manager once you activate your account.',true), 'flash_failure');
 			        }else{
 			            $this->Session->setFlash(__('The User has been saved', true));
 			        }
@@ -157,8 +202,7 @@ class UsersController extends AppController {
                 }
 				
 			} else {
-			    
-			    $this->Session->setFlash(__('The User could not be saved. Please, try again.', true));
+			    $this->Session->setFlash(__('The User could not be saved. Please, try again.', true), 'flash_failure');
 			}
 		}
 		$organizations = $this->User->Organization->find('list');
@@ -168,15 +212,21 @@ class UsersController extends AppController {
 	}
     function _sendActivationEmail($user) {
         if(!empty($user)) {
-            $this->set('activate_url', 'http://' . env('SERVER_NAME') . '/users/activate/' . $user['User']['id'] . '/' . $this->User->getActivationHash());
-            $this->set('username', $this->data['User']['username']);
+            $this->set('activate_url', 'http://' . env('SERVER_NAME') . '/organizations/activate/' . $user['User']['organization_id'] . '/' . $user['User']['id'] . '/'. $this->User->getActivationHash());
+            $this->set('user', $user);
+            $this->Email->reset();
             $this->Email->delivery = 'debug';
             $this->Email->to = $user['User']['email'];
-            $this->Email->subject = 'Please confirm your email address';
+            $this->Email->subject = 'Please confirm your organization';
             $this->Email->from = 'noreply@' . env('SERVER_NAME');
-            $this->Email->template = 'user_activation';
-            $this->Email->sendAs = 'both';
-            return $this->Email->send();
+            $this->Email->template = 'new_organization_activation';
+            $this->Email->sendAs = 'html';
+            try{
+                return $this->Email->send();
+            }catch(Exception $e){
+                return false;
+            }
+            
         }else {
             return false;
         }
@@ -189,7 +239,7 @@ class UsersController extends AppController {
                     $this->User->saveField('active', 1);
                    
                     // Let the user know they can now log in!
-                    $this->Session->setFlash('Your account has been activated, please log in below');
+                    $this->Session->setFlash(__('Your account has been activated, please log in below',true), 'flash_success');
                     $this->redirect('login');
             }
            
@@ -197,15 +247,15 @@ class UsersController extends AppController {
     }
 	function edit($id = null) {
 		if (!$id && empty($this->data)) {
-			$this->Session->setFlash(__('Invalid User', true));
+			$this->Session->setFlash(__('Invalid User', true), 'flash_failure');
 			$this->redirect(array('action'=>'index'));
 		}
 		if (!empty($this->data)) {
 			if ($this->User->save($this->data)) {
-				$this->Session->setFlash(__('The User has been saved', true));
+				$this->Session->setFlash(__('The User has been saved', true), 'flash_success');
 				$this->redirect(array('action'=>'index'));
 			} else {
-				$this->Session->setFlash(__('The User could not be saved. Please, try again.', true));
+				$this->Session->setFlash(__('The User could not be saved. Please, try again.', true), 'flash_failure');
 			}
 		}
 		if (empty($this->data)) {
@@ -218,15 +268,19 @@ class UsersController extends AppController {
 
 	function delete($id = null) {
 		if (!$id) {
-			$this->Session->setFlash(__('Invalid id for User', true));
+			$this->Session->setFlash(__('Invalid id for User', true), 'flash_failure');
 			$this->redirect(array('action'=>'index'));
 		}
 		if ($this->User->delete($id)) {
-			$this->Session->setFlash(__('User deleted', true));
+			$this->Session->setFlash(__('User deleted', true), 'flash_success');
 			$this->redirect(array('action'=>'index'));
 		}
 	}
     function login($data = null) {
+        if($this->Session->check('Auth.User')){
+        
+        }
+        $this->set('organizations', $this->User->Organization->find('list'));
         if( !(empty($this->data)) && $this->Auth->user()){
             $this->User->id = $this->Auth->user('id');
             $organization_id = $this->Auth->user('organization_id');
@@ -239,7 +293,8 @@ class UsersController extends AppController {
                 unset($this->data['User']['remember_me']);
             }
             $orgs = $this->User->Organization->find('list', array('fields' => array('Organization.id', 'Organization.slug')));
-            $this->Session->setFlash('Logged in');
+            
+            $this->Session->setFlash(__("Logged in", true), 'flash_success');
             if(is_null($this->subdomain)) {
                 $this->redirect("http://".$orgs[$organization_id] .'.'. env('SERVER_NAME') . $this->Auth->redirect());
             }else{
@@ -247,6 +302,7 @@ class UsersController extends AppController {
             }
         }
         if(empty($this->data)) {
+            
             $cookie = $this->Cookie->read('Auth.User');
             if(!$this->subdomain){
                 //debug(is_null($cookie));debug($cookie);die;
@@ -276,7 +332,7 @@ class UsersController extends AppController {
             //logging out in a subdomain doesn't log you out from base domain
             $this->redirect('http://'.substr(env('HTTP_BASE'), 1).'/users/logout');
         }
-        $this->Session->setFlash('Logged out');
+        $this->Session->setFlash(__('Logged out',true), 'flash_success');
         
         //destroy the remember me cookie
         $this->Cookie->destroy();

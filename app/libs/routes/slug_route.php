@@ -10,24 +10,27 @@
             //$orgs = Cache::read('organizations');
 
             //if (empty($orgs)) {
-                App::import('Model', 'Organization');
-
-                $Org = new Organization();
-                $orgs = $Org->find('all', array(
-                    'recursive' => -1
-                ));
+                
             //    Cache::write('organizations', $orgs);
             //}
             
             $url_parts    = explode('.', env('HTTP_HOST'));
             $subdomain    = strtolower(trim($url_parts[0]));
+            App::import('Model', 'Organization');
 
-            foreach($orgs as $idx => $val) {
-                if($val['Organization']['slug'] == $subdomain) {
-                    $params['organization'] = $val['Organization'];
+                $Org = new Organization();
+                $org = $Org->find('first', array(
+                    'conditions'=>array(
+                        'Organization.slug'=>$subdomain,
+                    ),
+                    'recursive' => -1
+                ));
+            
+                if($org['Organization']['slug'] == $subdomain) {
+                    $params['organization'] = $org['Organization'];
                     return $params;
                 }
-            }
+
                 
             return false;
         }   

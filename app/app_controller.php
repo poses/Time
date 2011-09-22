@@ -9,44 +9,66 @@
             //'Security',
             'IpFilter',
         );
-        var $helpers = array('Html', 'Form', 'Session');
-        
+        var $helpers = array('Html', 'Form', 'Javascript', 'Session', 'Date');
+
         function beforeFilter(){
             parent::beforeFilter();
-                
+
             $this->_setupStaging();
             $this->_setupSecurity();
-            $this->_setSubDomain();
+            
             $this->_setOrganization();
             $this->_userOrganizationCheck();
             $this->_setAppearance();
-            //debug($this->Auth->user());die;
-            $this->Auth->allow('display');
-            $this->Auth->authError = 'Please login to view this page.';
-            $this->Auth->autoRedirect = false;
-            $this->Auth->loginError= 'Incorrect username and/or password.';
-            $this->Auth->loginRedirect = array('controller' => 'time_clocks', 'action' => 'index');
-            $this->Auth->logoutRedirect = array('controller' => 'users', 'action' => 'login');
-            $this->Auth->userScope = array('User.active = 1');
+            $this->_setDefaults();
+            $this->_setContent();
+            $this->_setAuth();
             
-            if($this->params['controller'] == 'users'/* && $this->params['action'] == 'add' || $this->params['action'] == 'edit'*/) {
-                $this->Auth->authenticate = $this->User;
+            $this->cache_results = (Configure::read('cache_results'))?true:false;
+		    // We must make sure pages are viewable by non users
+		    if($this->params['controller'] == 'pages') {
+			    $this->Auth->allow('*');
+		    }
+		    
+		    // API Stuff
+		    if(isset($this->params['prefix']) && $this->params['prefix'] == 'api') {
+			    $this->autoRender = false;
+			
+			    // We must display an error message instead of redirecting if user is not logged in and content is for logged in users only.
+			    if(!in_array($this->params['action'],$this->Auth->allowedActions) && !$this->Session->check('Auth.User')) {
+			        // anon user, no access to API
+				    $response = array(
+					    'status' => array(
+						    'code' => API::LOGIN_REQUIRED,
+						    'text' => 'Login required to view this content.',
+					    ),
+				    );
+				    $this->set('response',$response);
+				    // We auth allow all our current action so we don't get redirect to login page.
+				    $this->Auth->allow($this->params['action']);
+			    } else {
+			    
+			    }
             }
-            
-            $this->set('organization', $this->currentOrganization);
             $this->set('admin', $this->_isRole('admin'));
             $this->set('manager', $this->_isRole('manager'));
         }
         function beforeRender() {
-            $user = $this->Auth->user();
+            if(!array_key_exists('requested', $this->params)){
+                $user = $this->Session->read($this->Auth->sessionKey);
+            }
             //unset($user['User']['password']);
+            if(isset($this->data['User']['password']));
             unset($this->data['User']['password']);
             if(!empty($user)){
                 $user['User']['client_ip'] = $this->RequestHandler->getClientIp();
             }
-            $this->set('user', $user['User']);
+            $this->set(compact('user'));
+            $this->_setErrorLayout();
         }
-
+        function isAuthorized(){
+            return true;
+        }
         function _isRole($role) {
             $admin = FALSE;
             if(!is_null($role) && $this->Auth->user('roles') == $role){
@@ -82,24 +104,61 @@
             exit;
         }
         function _setOrganization() {
+            $this->_setSubDomain();
             if(!empty($this->params['organization'])){
                 $this->currentOrganization = $this->params['organization'];
-                
+                $this->set('organization', $this->currentOrganization);
+                $this->__setTheme();
             }else{
                 $this->currentOrganization = null;
+                if(!is_null($this->subdomain)){
+                    $this->cakeError('error400', array('code'=>404, 'name'=>'Not Found','message'=>__('Oops, Meow. Purrrrrr 404')));
+                }
             }
+        }
+        function _setContent(){
+            $this->RequestHandler->setContent('json', 'text/x-json');
+		    $this->RequestHandler->setContent('jsonp', 'text/javascript');
+        }
+        function _setDefaults(){
+            $this->set('title_for_layout', Inflector::humanize($this->params['controller']));
+        }
+        function _setAuth(){
+        
+            $this->Auth->userScope = array(
+			    //'User.active' => true,
+			    //'User.suspended_until' < date(DATE_SQL),
+		    );
+		    $this->Auth->autoRedirect = false;
+		    $this->Auth->authError = '<span class="alert-message warning">Please login to view this page.</span>';
+		    $this->Auth->loginError= '<span class="alert-message error">Incorrect username and/or password.</span>';
+		    $this->Auth->actionPath = 'Controllers/';
+		    $this->Auth->loginAction = '/users/login';
+		    $this->Auth->loginRedirect = array('controller' => 'time_clocks', 'action' => 'index');
+		    $this->Auth->logoutRedirect = array('controller' => 'users', 'action' => 'login');
+            $this->Auth->authorize = 'controller';
         }
         function _setSubDomain() {
             $url_parts    = explode('.', env('HTTP_HOST'));
             $this->subdomain = null;
             if(count($url_parts) == 3) {
                 $this->subdomain    = strtolower(trim($url_parts[0]));
+                $this->tld = array_pop($url_parts);
+                $this->domain = array_pop($url_parts) . '.' . $this->tld;
+                
+                $this->set('subdomain', $this->subdomain);
+            }elseif(count($url_parts) == 2){
+                list($name, $this->tld) = $url_parts;
+                $this->domain = $name .'.'.$this->tld;
             }
+            $this->set('domain', $this->domain);
         }
         function __setTheme(){
             if(!empty($this->currentOrganization)&& !empty($this->currentOrganization['theme'])){
-                $this->view = 'Theme';
-                $this->theme = $this->currentOrganization['theme'];
+                //$this->view = 'Theme';
+                //$this->theme = $this->currentOrganization['theme'];
+                
+                
             }
         }
         function _setAppearance(){
@@ -114,6 +173,11 @@
                     
                     
                 }
+            }
+        }
+        function _setErrorLayout(){
+            if($this->name == 'CakeError'){
+                $this->layout = 'error';
             }
         }
         function _userOrganizationCheck(){
@@ -132,7 +196,9 @@
                     ),
                     'contain' => array(
                         'Organization',
-                        'UserGroup',
+                        'UserGroup'=>array(
+                            'UserGroupMembership',
+                        ),
                     )
                 ));
                 
@@ -156,7 +222,7 @@
                     }
                 }
             }
-            
+
         }
     }
 

@@ -1,159 +1,162 @@
-<div class="timeClocks index">
-<h2><?php __('TimeClock');?></h2>
-    <div id="current_timeclock">
-        
-        <?php if(empty($timeclock)):?>
-            <span id="timeclock_message">You are not clocked in.</span>
-            <?php
+<?php 
+    $date_today = date('Y-m-d');
+    $time_now = date('h:i A');
+    if(!empty($timeclock)){
+        $in_date = date('Y-m-d', strtotime($timeclock['TimeClock']['in']));
+        $in_time = date('h:i A', strtotime($timeclock['TimeClock']['in']));
+    }
+?>
+<div class="span16">
+    <div class="row">
+        <div class="span12 columns">
             
-                echo $this->Form->create('TimeClock', array('action' => 'in'));
-                echo $this->Form->input('user_id', array('type' => 'hidden', 'value' => $user['id']));
-                echo $this->Form->input('organization_id', array('type' => 'hidden', 'value' => $organization['id']));
-                echo $this->Form->end('Clock In', array('type' => 'button'));
-            ?>
-        <?php else:?>
-            <span id="timeclock_message">You clocked in at <time class="dtstart" datetime="<?php echo $timeclock['TimeClock']['in'];?>"><?php echo $timeclock['TimeClock']['in'];?></time>.</span>
-            <?php
-            
-                echo $this->Form->create('TimeClock', array('action' => 'out'));
-                echo $this->Form->input('user_id', array('type' => 'hidden', 'value' => $user['id']));
-                echo $this->Form->input('organization_id', array('type' => 'hidden', 'value' => $organization['id']));
-                
-                if(!empty($reasons)){
-                    $reason_keys = array_keys($reasons);
-                    echo $this->Form->select('reason_code_id', $reasons);
-                }
-                echo $this->Form->end('Clock Out', array('type' => 'button'));
-            ?>
-        <?php endif;?>
-        
-    </div>
-    <div id="current_timeclocks">
-    <style>
-        #date {
-            font-weight:bold;
-            margin:5px;
-        }
-        #timeclock {
-            padding:5px 0px 5px 5px;
-        }
-        #time_total {
-            margin-top:5px;
-            margin-bottom:5px;
-            font-weight:bold;
-            background-color:#aaa;
-            padding:5px 0px 5px 5px;
-        }
-        #timeclock:nth-child(even).approved {
-            background-color:#fff;
-            background-image:url(/img/timesheet_green_stripes.png);
-        }
-        
-        #timeclock:nth-child(even).unapproved {
-            background-color:#fff;
-            background-image:url(/img/timesheet_red_stripes.png);
-        }
-        #timeclock:nth-child(odd) {
-            background-color:#ccc;
-        }
-        #time_sheet #timeclocks {
-            border-bottom:2px solid #000;
-        }
-        #timeclock span {
-            padding-right:30px;
-        }
-        #timedate_total {
-            padding:5px 0px 5px 350px;
-            display:block;
-            background-color:#ddd;
-        }
-    </style>
-        <?php if(!empty($timeclocks)):?>
-            <span id="timeclocks_message">This Pay Period</span>
-            <div id="time_sheet">
-            <?php 
-                $lastDate = null;
-                $timeTotal = null;
-                $timeDateTotal = null;
-                $sameDate = false;
-                foreach($timeclocks as $index => $value) {
-                    if($value['TimeClock']['out'] != '0000-00-00 00:00:00') {
-                        $datetime = explode(' ', $value['TimeClock']['in']);
-                        $dateIn = $datetime[0];
-                        $timeIn = $datetime[1];
-                        unset($datetime);
-                        
-                        $datetime = explode(' ', $value['TimeClock']['out']);
-                        $dateOut = $datetime[0];
-                        $timeOut = $datetime[1];
-                        unset($datetime);
-                        
-                        $datetimeIn = new DateTime($value['TimeClock']['in']);
-                        $datetimeOut = new DateTime($value['TimeClock']['out']);
-                        $datetimeDiff = $datetimeIn->diff($datetimeOut);
-                        
-                        if($lastDate != $dateIn) {
-                            $lastDate = $dateIn;
-                            
-                            $timeDateTotal = new DateTime('1970-01-01 00:00:00');
-                            if($sameDate){
-                                echo "</div>";
-                            }
-                            echo "<div id=\"timeclocks\"><div id=\"date\">" . $dateIn ."</div>";
-                        }
-                        $sameDate = true;
-                        if(is_null($timeTotal)){
-                        
-                            $timeTotal = new DateTime('1970-01-01 00:00:00');
-                        }
-                        $timeDateTotal->add($datetimeDiff);
-                        $timeTotal->add($datetimeDiff);
+            <?php if(empty($timeclock)):?>
+                <?php echo $this->Form->create('TimeClock', array('action' => 'in'));?>
+                <div class="row">
+                    <span class="span6"><h4>You are not clocked in.</h4></span>
+                </div>
+                <fieldset>
+                <legend></legend>
+                <div class="clearfix">
+                <?php 
+                    echo $this->Form->input('user_id', array('type' => 'hidden', 'value' => $user['id']));
+                    echo $this->Form->input('organization_id', array('type' => 'hidden', 'value' => $organization['id']));
                 ?>
+                </div>
+                <div class="actions">
+         		    <?php echo $form->end(array('div'=>false, 'label'=>__('Clock In',true),'name'=>'ClockIn', 'class'=>'btn large primary'));?>
+         		</div>
                 
-                    <div id="timeclock" class="<?php echo $approved = ($value['TimeClock']['approved'])? 'approved' : 'unapproved'; ?>">
-                        
-                        <span id="time_in" title="clocked in">
-                            <?php echo $timeIn;?>
-                        </span>
-                        <span id="time_out" title="clocked out">
-                            <?php echo $timeOut;?>
-                        </span>
-                        <span id="time_length" title="amount">
-                            <?php echo $datetimeDiff->format('%H:%I:%S');// %H:%i:%s ??? ?> 
-                        </span>
-                        <?php if(!empty($reasons)):?>
-                            <span id="time_out_reason">
-                                <?php 
-                                    if(array_key_exists($value['TimeClock']['reason_code_id'], $reasons)) {
-                                        echo $reasons[$value['TimeClock']['reason_code_id']];
-                                    }
-                                ?>
-                            </span>
-                        <?php endif;?>
-                    </div>
-                    
+                </fieldset>
+            <?php else:?>
+            <?php echo $this->Form->create('TimeClock', array('action' => 'out'));?>
+            <div class="row">
+                <div class="span2" title="In time">
+                    <div class="mb5">
                         <?php 
-                            if($sameDate){
-                            ?>
-                                <span id="timedate_total" title="total today"><?php echo $timeDateTotal->format('H:i:s')?></span>
-                            <?php
+                            if($date_today === $in_date){
+                                echo __('Today at ', true);
+                            }else{
+                                echo $in_date;
                             }
-                        } //endif
-                    } //endforeach
-                    if(!is_null($timeTotal)){
-                        if($sameDate){
-                            echo "</div>";
-                            $sameDate=false;
-                        }
+                        ?>
+                    </div>
+                    <div class="bold font20">
+                        <?php
+                            echo $in_time;
+                        ?>
+                    </div>
+                </div>
+            </div>
+                <fieldset>
+                
+                    <legend>
                         
-                        $d = ($timeTotal->format('d') - 1) * 24;
-                        $h = $timeTotal->format('H');
-                        $t = $d + $h;
-                        $m = $timeTotal->format('i');
+                    </legend>
+                    <div class="clearfix">
                     
-                        echo "<div id=\"time_total\">" . $t . ' Hours, ' . $m .  " Minutes Total</div>";
-                    }
-                ?>
+                    
+                    <?php
+                    
+                        
+                        echo $this->Form->input('user_id', array('type' => 'hidden', 'value' => $user['id']));
+                        echo $this->Form->input('organization_id', array('type' => 'hidden', 'value' => $organization['id']));
+                        
+                        if(!empty($reasons)){
+                            $reason_keys = array_keys($reasons);
+                            echo '<label for="TimeClockReasonCodeId">' . __('Reason Code', true). '</label>';
+                            echo '<div class="input">';
+                            echo $this->Form->select('reason_code_id', $reasons, array('label'=>false, 'div'=>false));
+                            echo '</div>';
+                        }
+                    ?>
+                    </div>
+                    <div class="actions">
+             		    <?php echo $form->end(array('div'=>false, 'label'=>__('Clock Out',true),'name'=>'ClockOut', 'class'=>'btn large primary'));?>
+             		</div>
+                    
+                </fieldset>
+            <?php endif;?>
+            
+        </div>
+
+        <?php if(!empty($timeclocks)):?>
+            <div id="time_sheet" class="span12 columns">
+                <h3><?php echo __('Time Sheet', true);?></h3>
+                <table class="zebra-striped">
+                    <thead class="ddd">
+                        <th><?php echo __('In', true);?></th>
+                        <th><?php echo __('Out', true);?></th>
+                        <th><?php echo __('Duration', true);?></th>
+                        <th><?php echo __('Out Reason', true);?></th>
+                    </thead>
+                    <tbody>
+                    <?php 
+                        $days_total = null;
+                        $hours_total = null;
+                        $minutes_total = null;
+                        $days_left = null;
+                        $hours_left = null;
+                        $minutes_left = null;
+                    ?>
+                    <?php foreach($timeclocks as $index => $value):?>
+                        <?php if($value['TimeClock']['out'] != '0000-00-00 00:00:00'):?>
+                            <?php 
+                                $date_in = date('Y-m-d', strtotime($value['TimeClock']['in']));
+                                $time_in = date('h:i A', strtotime($value['TimeClock']['in']));
+                                $date_out = date('Y-m-d', strtotime($value['TimeClock']['out']));
+                                $time_out = date('h:i A', strtotime($value['TimeClock']['out']));
+                                $timezone = $this->Session->read('Auth.User.timezone');
+                                if(empty($timezone)){
+                                    if(!empty($this->currentOrganization['timezone'])){
+                                        $timezone = $this->currentOrganization['timezone'];
+                                    }else{
+                                        $timezone = date_default_timezone_get();
+                                    }
+                                    
+                                }
+                                list($days_diff, $hours_diff, $minutes_diff) = 
+                                    $this->Date->dateDiff($value['TimeClock']['in'], $value['TimeClock']['out'], $timezone);
+                                    
+                                if($days_diff <= 9){
+                                    $days_diff =  $days_diff;
+                                }
+                                if($hours_diff <= 9){
+                                    $hours_diff = '0' . $hours_diff;
+                                }
+                                if($minutes_diff <= 9){
+                                    $minutes_diff = '0' . $minutes_diff;
+                                }
+                                $days_left += (int)$days_diff;
+                                $hours_left += (int)$hours_diff;
+                                $minutes_left += (int)$minutes_diff;
+                                
+                            ?>
+                            <tr class="<?php echo $approved = ($value['TimeClock']['approved'])? 'approved' : 'unapproved'; ?>">
+                                <td title="<?php echo $date_in;?>"><?php echo $time_in;?></td>
+                                <td title="<?php echo $date_out;?>"><?php echo $time_out;?></td>
+                                <td title="<?php echo $days_diff;?> days"><?php echo (($days_diff > 0)?(($days_diff == 1)?'1 day, ':$days_diff.' days, '):'0 days, ') . $hours_diff.' hours, '.$minutes_diff.' minutes';?></td>
+                                <td>
+                                    <?php if(!empty($reasons)):?>
+                                        <?php 
+                                            if(array_key_exists($value['TimeClock']['reason_code_id'], $reasons)) {
+                                                echo $reasons[$value['TimeClock']['reason_code_id']];
+                                            }
+                                        ?>
+                                    <?php endif;?>
+                                </td>
+                            </tr>
+                        <?php endif;?>
+                    <?php endforeach;?>
+                        <?php 
+                            $minutes_total = round($minutes_left % 60); 
+                            $hours_left = ($minutes_left / 60) + $hours_left;
+                            $hours_total = round($hours_left % 24);
+                            $days_total = round($days_left + ($hours_left / 24));
+                        ?>
+                        <tr><td colspan="5"><h4><?php echo (($days_total > 0)?(($days_total == 1)?'1 day, ':$days_total.' days, '):'0 days, ') . $hours_total . ' hours, ' . $minutes_total . ' minutes';?></h4></td></tr> 
+                    </tbody>
+                    </table>
             </div>
         <?php endif;?>        
     </div>
